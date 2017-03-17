@@ -1,0 +1,5 @@
+cmake_minimum_required(VERSION 2.8)
+project( DepthBlur )
+find_package( OpenCV REQUIRED )
+add_executable( DepthBlur.out DepthBlur.cpp )
+target_link_libraries( DepthBlur.out ${OpenCV_LIBS} )

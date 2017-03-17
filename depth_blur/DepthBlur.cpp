@@ -75,7 +75,7 @@ void print_matrix(const cv::Mat * mat)
 		for(int j = 0; j < cols; j += channels )
 		{
 			printf("[ ");
-			for(k = 0; k < channels; k++)
+			for(int k = 0; k < channels; k++)
 			{
 				printf("c%d=%d, ", k, row[j + k]);
 			}
@@ -124,21 +124,12 @@ int main( int argc, char** argv )
 	cv::Mat image = cv::imread("desk_3_1.png");
 	cv::Mat depth = cv::imread("desk_3_1_depth.png");
 
-	printf("image type: %d\n", image.type()); //C3_8U, tri kanaly 8bitu
-	printf("depth type: %d\n", depth.type()); //C3_8U, tri kanaly 8bitu
-
-    cv::Mat A = cv::Mat::ones(3,3, CV_8UC3);
-    cv::randu(A, 0, 10);
-
     cv::Mat B = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
     
     depth_blur(&image, &B);
 
     cv::imshow("img", image);
     cv::imshow("B", B);
-
-    cout << depth << endl;
-
 
     cv::waitKey(0);                                          // Wait for a keystroke in the window
     return 0;
