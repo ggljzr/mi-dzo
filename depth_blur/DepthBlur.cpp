@@ -85,6 +85,17 @@ int get_average(const cv::Mat * mat, char color)
 	return sum;
 }
 
+int get_kernel(uchar a)
+{
+    int kernels[6] = {1,3,5,7,11,13};
+    for(int i = 0; i < 6; i++)
+    {
+        if(a < kernels[i])
+            return kernels[i];
+    }
+    return kernels[5];
+}
+
 int depth_blur(const cv::Mat * mat, const cv::Mat * depth, cv::Mat * res)
 {
     if(mat->rows != res->rows || mat->cols != res->cols)
@@ -106,10 +117,7 @@ int depth_blur(const cv::Mat * mat, const cv::Mat * depth, cv::Mat * res)
     	uchar * row_out = res->ptr<uchar>(i);
     	for(int j = 3; j < cols; j += channels)
     	{
-            int k = row_depth[j];
-            if(k % 2 == 0)
-                k++;
-
+            int k = get_kernel(row_depth[j]);
     		cv::Mat * neigbours = get_neighbours(mat, i, j / channels, k);
 
     		row_out[j] = get_average(neigbours, 0);
@@ -135,14 +143,16 @@ int main( int argc, char** argv )
 	cv::Mat image = cv::imread(argv[1]);
 	cv::Mat depth = cv::imread(argv[2]);
 
-    double min, max;
-    cv::minMaxLoc(depth, &min, &max);
-    cout << min << endl;
-    cout << max << endl;
-
     cv::Mat B = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
     
     depth_blur(&image, &depth, &B);
+
+    double min;
+    double max;
+    cv::minMaxIdx(depth, &min, &max);
+    cv::Mat adjMap;
+    cv::convertScaleAbs(depth, adjMap, 255 / max);
+    cv::imwrite("depth_vis.png", adjMap);
 
     //cv::imshow("img", image);
     cv::imwrite("res.png", B);
