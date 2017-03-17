@@ -1,0 +1,2 @@
+# mi-dzo
+DZO semestralka
