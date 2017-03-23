@@ -38,6 +38,9 @@ cv::Mat * get_neighbours(const cv::Mat * mat, int x, int y, int size)
     cv::Rect r(y-size/2,x-size/2,size, size);
 
     cv::Mat * res = NULL;
+    uchar red = mat->at<uchar>(x, y);
+    uchar green = mat->at<uchar>(x+1, y);
+    uchar blue = mat->at<uchar>(x+2, y);
 
     if(0 <= r.x && 0 <= r.width && 
     	r.x + r.width <= mat->cols &&
@@ -48,7 +51,8 @@ cv::Mat * get_neighbours(const cv::Mat * mat, int x, int y, int size)
     }
     else
     {
-    	res = new cv::Mat(size, size, CV_8UC3, cvScalar(0));
+    	res = new cv::Mat(1, 1, CV_8UC3);
+        res->setTo(cv::Scalar(red, green, blue));
     }
 
     return res;
@@ -87,13 +91,18 @@ int get_average(const cv::Mat * mat, char color)
 
 int get_kernel(uchar a)
 {
-    int kernels[6] = {1,3,5,7,11,13};
-    for(int i = 0; i < 6; i++)
-    {
-        if(a < kernels[i])
-            return kernels[i];
-    }
-    return kernels[5];
+    int kernels[8] = {1,1,3,3,5,5,5,7};
+    return kernels[a];
+}
+
+void depth_visualise(const cv::Mat * depth)
+{
+    double min;
+    double max;
+    cv::minMaxIdx(*depth, &min, &max);
+    cv::Mat adjMap;
+    cv::convertScaleAbs(*depth, adjMap, 255 / max);
+    cv::imwrite("depth_vis.png", adjMap);
 }
 
 int depth_blur(const cv::Mat * mat, const cv::Mat * depth, cv::Mat * res)
@@ -118,6 +127,10 @@ int depth_blur(const cv::Mat * mat, const cv::Mat * depth, cv::Mat * res)
     	for(int j = 3; j < cols; j += channels)
     	{
             int k = get_kernel(row_depth[j]);
+            //int k = 1;
+            //if(row_depth[j] > 2)
+                //k = 13;
+
     		cv::Mat * neigbours = get_neighbours(mat, i, j / channels, k);
 
     		row_out[j] = get_average(neigbours, 0);
@@ -143,19 +156,13 @@ int main( int argc, char** argv )
 	cv::Mat image = cv::imread(argv[1]);
 	cv::Mat depth = cv::imread(argv[2]);
 
-    cv::Mat B = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
+    cv::Mat blur = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
     
-    depth_blur(&image, &depth, &B);
-
-    double min;
-    double max;
-    cv::minMaxIdx(depth, &min, &max);
-    cv::Mat adjMap;
-    cv::convertScaleAbs(depth, adjMap, 255 / max);
-    cv::imwrite("depth_vis.png", adjMap);
+    depth_blur(&image, &depth, &blur);
 
     //cv::imshow("img", image);
-    cv::imwrite("res.png", B);
+    cv::imwrite("blur.png", blur);
+    depth_visualise(&depth);
 
     cv::waitKey(0);                                          // Wait for a keystroke in the window
     return 0;
