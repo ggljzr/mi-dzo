@@ -43,15 +43,15 @@ cv::Mat * get_neighbours(const cv::Mat * mat, int x, int y, int size)
     uchar blue = mat->at<uchar>(x+2, y);
 
     if(0 <= r.x && 0 <= r.width && 
-    	r.x + r.width <= mat->cols &&
-    	0 <= r.y && 0 <= r.height &&
-    	r.y + r.height <= mat->rows)
+        r.x + r.width <= mat->cols &&
+        0 <= r.y && 0 <= r.height &&
+        r.y + r.height <= mat->rows)
     {
-    	res = new cv::Mat(*mat, r);
+        res = new cv::Mat(*mat, r);
     }
     else
     {
-    	res = new cv::Mat(1, 1, CV_8UC3);
+        res = new cv::Mat(1, 1, CV_8UC3);
         res->setTo(cv::Scalar(red, green, blue));
     }
 
@@ -67,32 +67,39 @@ color:
 */
 int get_average(const cv::Mat * mat, char color)
 {
-	if(mat->type() != CV_8UC3)
-		return NOT_8UC3_IMAGE;
+    if(mat->type() != CV_8UC3)
+        return NOT_8UC3_IMAGE;
 
-	int rows = mat->rows;
-	int channels = mat->channels();
-	int cols = mat->cols * channels;
+    int rows = mat->rows;
+    int channels = mat->channels();
+    int cols = mat->cols * channels;
 
-	int sum = 0;
+    int sum = 0;
 
-	for(int i = 0; i < rows; i++)
-	{
-		const uchar * row = mat->ptr<uchar>(i);
-		for(int j = 0; j < cols; j += channels)
-		{
-			sum += row[j + color];
-		}
-	}
+    for(int i = 0; i < rows; i++)
+    {
+        const uchar * row = mat->ptr<uchar>(i);
+        for(int j = 0; j < cols; j += channels)
+        {
+            sum += row[j + color];
+        }
+    }
 
-	sum = sum / (rows * mat->cols);
-	return sum;
+    sum = sum / (rows * mat->cols);
+    return sum;
 }
 
 int get_kernel(uchar a)
 {
-    int kernels[8] = {1,1,3,3,5,5,5,7};
-    return kernels[a];
+    if (a < 32)
+        return 13;
+    if (a < 64)
+        return 11;
+    if (a < 128)
+        return 7;
+    if (a < 196)
+        return 3;
+    return 1;
 }
 
 void depth_visualise(const cv::Mat * depth)
@@ -110,9 +117,9 @@ int depth_blur(const cv::Mat * mat, const cv::Mat * depth, cv::Mat * res)
     if(mat->rows != res->rows || mat->cols != res->cols)
         return NOT_MATCHING_SIZE;
     if(mat->type() != res->type())
-    	return NOT_MATCHING_TYPE;
+        return NOT_MATCHING_TYPE;
     if(mat->type() != CV_8UC3)
-    	return NOT_8UC3_IMAGE;
+        return NOT_8UC3_IMAGE;
 
 
     int rows = mat->rows;
@@ -121,24 +128,24 @@ int depth_blur(const cv::Mat * mat, const cv::Mat * depth, cv::Mat * res)
 
     for(int i = 1; i < rows; i++)
     {
-    	const uchar * row_in = mat->ptr<uchar>(i);
+        const uchar * row_in = mat->ptr<uchar>(i);
         const uchar * row_depth = depth->ptr<uchar>(i);
-    	uchar * row_out = res->ptr<uchar>(i);
-    	for(int j = 3; j < cols; j += channels)
-    	{
+        uchar * row_out = res->ptr<uchar>(i);
+        for(int j = 3; j < cols; j += channels)
+        {
             int k = get_kernel(row_depth[j]);
-            //int k = 1;
-            //if(row_depth[j] > 2)
-                //k = 13;
+            //int k = 13;
+            //if(row_depth[j] > 128)
+             //   k = 1;
 
-    		cv::Mat * neigbours = get_neighbours(mat, i, j / channels, k);
+            cv::Mat * neigbours = get_neighbours(mat, i, j / channels, k);
 
-    		row_out[j] = get_average(neigbours, 0);
-    		row_out[j + 1] = get_average(neigbours, 1);
-    		row_out[j + 2] = get_average(neigbours, 2);
+            row_out[j] = get_average(neigbours, 0);
+            row_out[j + 1] = get_average(neigbours, 1);
+            row_out[j + 2] = get_average(neigbours, 2);
 
-    		delete neigbours;
-    	}
+            delete neigbours;
+        }
     }
 
     return 0;
@@ -153,8 +160,8 @@ int main( int argc, char** argv )
         return 0;
     }
 
-	cv::Mat image = cv::imread(argv[1]);
-	cv::Mat depth = cv::imread(argv[2]);
+    cv::Mat image = cv::imread(argv[1]);
+    cv::Mat depth = cv::imread(argv[2]);
 
     cv::Mat blur = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
     
