@@ -2,10 +2,15 @@
 #include <opencv2/imgproc/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <iostream>
+#include <math.h>
 
 using namespace std;
 
 #define NOT_SAME_TYPE -1
+
+#define WEIGHT_ALPHA 0.8
+#define WEIGHT_BETA 0.2
+#define WEIGHT_GAMMA 0
 
 int get_sequence(const cv::Mat * img, int n, cv::Mat ** seq, double x, double y)
 {
@@ -14,14 +19,17 @@ int get_sequence(const cv::Mat * img, int n, cv::Mat ** seq, double x, double y)
     int rows = img->rows;
     int cols = img->cols;
 
-    cv::copyMakeBorder(*img, img_expanded, 0, n*y, 0, n*x, cv::BORDER_CONSTANT);
+    int bx = (n * abs(x));
+    int by = (n * abs(y));
+
+    cv::copyMakeBorder(*img, img_expanded, 0, by, 0, bx, cv::BORDER_CONSTANT, cv::Scalar(0,0,0,0));
 
     for(int i = 0; i < n; i++)
     {
         double m[2][3] = {{1.0, 0.0, i * x}, {0.0, 1.0, i * y}};
         cv::Mat M = cv::Mat(2, 3, CV_64F, m);
         seq[i] = new cv::Mat(img_expanded.size(), img_expanded.type());
-        cv::warpAffine(img_expanded, *seq[i], M, img_expanded.size());
+        cv::warpAffine(img_expanded, *seq[i], M, img_expanded.size(), cv::INTER_LINEAR, cv::BORDER_TRANSPARENT);
     }
 
     return 0;
@@ -42,7 +50,7 @@ int get_blured(const cv::Mat * img, int n, cv::Mat * &dst,
 
     for(int i = 0; i < n; i++)
     {
-        cv::addWeighted(*dst, 0.6, *seq[i], 0.4, 0, *dst);
+        cv::addWeighted(*dst, WEIGHT_ALPHA, *seq[i], WEIGHT_BETA, WEIGHT_GAMMA, *dst);
     }
 
     for(int i = 0; i < n; i++)
@@ -55,22 +63,24 @@ int get_blured(const cv::Mat * img, int n, cv::Mat * &dst,
     return 0;
 }
 
+//WIP
 int compose(const cv::Mat * fg, cv::Mat * bg, int x, int y)
 {
-    if(fg->channels() != 3)
-        cv::cvtColor(*fg, *fg, CV_GRAY2RGB);
+    //if(fg->channels() != 3)
+        //cv::cvtColor(*fg, *fg, CV_GRAY2RGB);
     
-    if(bg->channels() != 3)
-        cv::cvtColor(*bg, *bg, CV_GRAY2RGB);
+    if(bg->channels() != 4)
+        cv::cvtColor(*bg, *bg, CV_RGB2RGBA);
 
     int rows = fg->rows;
-    int cols = fg->cols * fg->channels();
+    int channels = fg->channels();
+    int cols = fg->cols * channels;
 
     for(int i = 0; i < rows; i++)
     {
         uchar * row_bg = bg->ptr<uchar>(i + y);
         const uchar * row_fg = fg->ptr<uchar>(i); 
-        for(int j = 0; j < cols; j += 3)
+        for(int j = 0; j < cols; j += channels)
         {
             int r = row_fg[j];
             int g = row_fg[j + 1];
@@ -79,34 +89,40 @@ int compose(const cv::Mat * fg, cv::Mat * bg, int x, int y)
             if(r > 10 && g > 10 && b > 10)
             {
 
-            row_bg[j + x] = r;
-            row_bg[j + x + 1] = g;
-            row_bg[j + x + 2] = b;}
+                row_bg[j + x] = r;
+                row_bg[j + x + 1] = g;
+                row_bg[j + x + 2] = b;
+                row_bg[j + x + 3] = row_fg[j + 3];
+            }
+            else
+                row_bg[j + x + 3] = 255;
         }
     }
 }   
 
 int main(int argc, char ** argv)
 {
-    int n = 20;
+    int n = 15;
 
     if(argc < 2)
     {
         cout << "usage: ./MotionBlur image.png" << endl;
     }
 
-    cv::Mat img = cv::imread(argv[1]);
-    //cv::Mat bg = cv::imread("bg.png");
+    cv::Mat img = cv::imread(argv[1], cv::IMREAD_UNCHANGED);
+    cv::Mat bg = cv::imread("bg.png");
 
     //cout << img.type() << endl;
 
     cv::Mat * dst = NULL;
-    get_blured(&img, n, dst, 16, 8);
-    
-    //compose(dst, &bg, 0, 0);
+    get_blured(&img, n, dst, -4, 0);
 
+    cv::cvtColor(bg, bg, CV_RGB2RGBA);
+
+    //dst->copyTo(bg(cv::Rect(0,0,dst->cols, dst->rows)));
+
+    //cv::imwrite("res.png", bg);
     cv::imwrite("res.png", *dst);
-    cv::imwrite("res.png", img);
 
     delete dst;
 
