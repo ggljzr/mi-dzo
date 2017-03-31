@@ -35,16 +35,16 @@ int get_sequence(const cv::Mat * img, int n, cv::Mat ** seq, double x, double y)
     return 0;
 }
 
-//dst is passed via pointer and allocated within this
-//function because I dont know the exact size of dst
-//matrix until I call get_sequence()
-int get_blured(const cv::Mat * img, int n, cv::Mat * &dst,
-                double x = 8.0, double y = 4.0)
+//the matrix with blured image is created on heap (new)
+//within this function because I dont know blured image
+//size until I call get_sequence()
+//Pointer to blured image matrix is returned
+cv::Mat * get_blured(const cv::Mat * img, int n, double x = 8.0, double y = 4.0)
 {
     cv::Mat ** seq = new cv::Mat*[n];
     get_sequence(img, n, seq, x, y);
 
-    dst = new cv::Mat(seq[0]->size(), seq[0]->type());
+    cv::Mat * dst = new cv::Mat(seq[0]->size(), seq[0]->type());
 
     seq[0]->copyTo(*dst);
 
@@ -60,7 +60,7 @@ int get_blured(const cv::Mat * img, int n, cv::Mat * &dst,
 
     delete seq;
 
-    return 0;
+    return dst;
 }
 
 //WIP
@@ -100,6 +100,7 @@ int compose(const cv::Mat * fg, cv::Mat * bg, int x, int y)
     }
 }   
 
+
 int main(int argc, char ** argv)
 {
     int n = 15;
@@ -114,10 +115,7 @@ int main(int argc, char ** argv)
 
     //cout << img.type() << endl;
 
-    cv::Mat * dst = NULL;
-    get_blured(&img, n, dst, -4, 0);
-
-    cv::cvtColor(bg, bg, CV_RGB2RGBA);
+    cv::Mat * dst = get_blured(&img, n, -4, 0);
 
     //dst->copyTo(bg(cv::Rect(0,0,dst->cols, dst->rows)));
 
