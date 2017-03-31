@@ -134,9 +134,6 @@ int depth_blur(const cv::Mat * mat, const cv::Mat * depth, cv::Mat * res)
         for(int j = 3; j < cols; j += channels)
         {
             int k = get_kernel(row_depth[j]);
-            //int k = 13;
-            //if(row_depth[j] > 128)
-             //   k = 1;
 
             cv::Mat * neigbours = get_neighbours(mat, i, j / channels, k);
 
@@ -169,8 +166,6 @@ int main( int argc, char** argv )
 
     //cv::imshow("img", image);
     cv::imwrite("blur.png", blur);
-    depth_visualise(&depth);
 
-    cv::waitKey(0);                                          // Wait for a keystroke in the window
     return 0;
 }
