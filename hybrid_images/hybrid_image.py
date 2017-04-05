@@ -1,18 +1,16 @@
 import cv2
 import numpy as np
 
-ein = cv2.imread('ein.png')
-ein = cv2.cvtColor(ein, cv2.COLOR_RGB2GRAY)
+ein = cv2.imread('ein.png', 0)
 
-f = np.fft.fft2(ein)
+print(ein.shape)
+f = np.fft.fft2(ein, (407, 407))
+fshift = np.fft.fftshift(f)
+fspec = np.log(np.abs(fshift))
 
 m = np.ones(ein.shape)
 m[0:(m.shape[0] // 2)] = -1
 
 mf = np.fft.fft2(m)
 
-res = f * mf
-res = np.fft.ifft2(res)
-res = np.log(np.abs(res))
-
-cv2.imwrite('res.png', res * 15)
+cv2.imwrite('res.png', fspec * 15)

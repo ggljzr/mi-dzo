@@ -2,16 +2,18 @@ import cv2
 import numpy as np
 import sys
 
-def get_sequence(img, n, x = 8, y = 4):
+
+def get_sequence(img, n, x=8, y=4):
     seq = []
 
-    img_expanded = cv2.copyMakeBorder(img, 0, n*y, 0, n*x, cv2.BORDER_CONSTANT)
+    img_expanded = cv2.copyMakeBorder(
+        img, 0, n * y, 0, n * x, cv2.BORDER_CONSTANT)
     rows = img_expanded.shape[0]
     cols = img_expanded.shape[1]
 
     for i in range(0, n):
-        M = np.float32([[1,0,x*i],[0,1,y*i]])
-        dst = cv2.warpAffine(img_expanded,M,(cols,rows))
+        M = np.float32([[1, 0, x * i], [0, 1, y * i]])
+        dst = cv2.warpAffine(img_expanded, M, (cols, rows))
         seq.append(dst)
 
     return seq
