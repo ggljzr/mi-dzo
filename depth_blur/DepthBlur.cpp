@@ -1,5 +1,6 @@
 #include <iostream>
 #include <opencv2/core/core.hpp>
+#include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
 #define NOT_8UC3_IMAGE -3
@@ -7,6 +8,11 @@
 #define NOT_MATCHING_SIZE -1
 
 using namespace std;
+
+int sliderx, slidery;
+
+cv::Mat target;
+cv::Mat image;
 
 void print_matrix(const cv::Mat* mat) {
   printf("Size: %d r %d c\n", mat->rows, mat->cols);
@@ -91,7 +97,8 @@ void depth_visualise(const cv::Mat* depth) {
   cv::imwrite("depth_vis.png", adjMap);
 }
 
-int depth_blur(const cv::Mat* mat, const cv::Mat* depth, cv::Mat* res) {
+int depth_blur(const cv::Mat *mat, const cv::Mat *depth, int x, int y,
+               cv::Mat *res) {
   if (mat->rows != res->rows || mat->cols != res->cols)
     return NOT_MATCHING_SIZE;
   if (mat->type() != res->type()) return NOT_MATCHING_TYPE;
@@ -100,6 +107,8 @@ int depth_blur(const cv::Mat* mat, const cv::Mat* depth, cv::Mat* res) {
   int rows = mat->rows;
   int channels = mat->channels();
   int cols = mat->cols * channels;
+
+  cv::Point focus_point = cv::Point(x,y);
 
   for (int i = 1; i < rows; i++) {
     const uchar* row_in = mat->ptr<uchar>(i);
@@ -117,7 +126,18 @@ int depth_blur(const cv::Mat* mat, const cv::Mat* depth, cv::Mat* res) {
     }
   }
 
+  circle(*res, focus_point, 8, cv::Scalar(0,0,255), CV_FILLED, 8);
+
   return 0;
+}
+
+void on_trackbar(int, void *)
+{
+  printf("x = %d y = %d\n", sliderx, slidery);
+  image.copyTo(target);
+  cv::Point fp = cv::Point(sliderx, slidery);
+  circle(target, fp, 4, cv::Scalar(0,0,255), CV_FILLED, 8);
+  cv::imshow("Blur window", target);
 }
 
 int main(int argc, char** argv) {
@@ -126,15 +146,28 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  cv::Mat image = cv::imread(argv[1]);
+  image = cv::imread(argv[1]);
   cv::Mat depth = cv::imread(argv[2]);
 
   cv::Mat blur = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
 
-  depth_blur(&image, &depth, &blur);
+  depth_blur(&image, &depth, 0, 0, &blur);
+
+  target = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
+  image.copyTo(target);
 
   // cv::imshow("img", image);
   cv::imwrite("blur.png", blur);
 
+  cv::namedWindow("Blur window", 1);
+
+  sliderx = 0;
+  slidery = 0;
+  cv::createTrackbar("Trackbar x", "Blur window", &sliderx, image.cols, on_trackbar);
+  cv::createTrackbar("Trackbar y", "Blur window", &slidery, image.rows, on_trackbar);
+
+  cv::imshow("Blur window", target);
+
+  while((cv::waitKey() & 0xEFFFFF) != 27);
   return 0;
 }
