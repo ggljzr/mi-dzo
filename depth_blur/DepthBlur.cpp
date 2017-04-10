@@ -81,11 +81,23 @@ int get_average(const cv::Mat* mat, char color) {
 }
 
 int get_kernel(uchar a) {
+
   if (a < 32) return 13;
   if (a < 64) return 11;
   if (a < 128) return 7;
   if (a < 196) return 3;
   return 1;
+}
+
+int get_kernel_by_depth(uchar a, uchar depth)
+{
+  int diff = abs(a - depth);
+
+  if (diff < 32) return 1;
+  if (diff < 64) return 3;
+  if (diff < 128) return 7;
+  if (diff < 196) return 11;
+  return 13;
 }
 
 void depth_visualise(const cv::Mat* depth) {
@@ -108,14 +120,16 @@ int depth_blur(const cv::Mat *mat, const cv::Mat *depth, int x, int y,
   int channels = mat->channels();
   int cols = mat->cols * channels;
 
-  cv::Point focus_point = cv::Point(x,y);
+  cv::Vec3b target_depth = depth->at<cv::Vec3b>(y, x);
+  printf("target depth at (%d, %d) = %d\n", sliderx, slidery, target_depth[0]);
 
   for (int i = 1; i < rows; i++) {
     const uchar* row_in = mat->ptr<uchar>(i);
     const uchar* row_depth = depth->ptr<uchar>(i);
     uchar* row_out = res->ptr<uchar>(i);
     for (int j = 3; j < cols; j += channels) {
-      int k = get_kernel(row_depth[j]);
+      //int k = get_kernel(row_depth[j]);
+      int k = get_kernel_by_depth(row_depth[j], target_depth[0]);
       cv::Mat* neigbours = get_neighbours(mat, i, j / channels, k);
 
       row_out[j] = get_average(neigbours, 0);
@@ -125,8 +139,6 @@ int depth_blur(const cv::Mat *mat, const cv::Mat *depth, int x, int y,
       delete neigbours;
     }
   }
-
-  circle(*res, focus_point, 8, cv::Scalar(0,0,255), CV_FILLED, 8);
 
   return 0;
 }
@@ -168,6 +180,16 @@ int main(int argc, char** argv) {
 
   cv::imshow("Blur window", target);
 
-  while((cv::waitKey() & 0xEFFFFF) != 27);
+  int key = 0;
+
+  while(1)
+  {
+    key = (cv::waitKey() & 0xEFFFFF);
+    if(key == 27) break;
+    else if(key == 32){
+      depth_blur(&image, &depth, sliderx, slidery, &target);
+      cv::imshow("Blur window", target);
+    }
+  }
   return 0;
 }
