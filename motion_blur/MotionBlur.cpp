@@ -8,54 +8,37 @@ using namespace std;
 
 #define NOT_SAME_TYPE -1
 
-#define WEIGHT_ALPHA 0.8
-#define WEIGHT_BETA 0.2
+#define WEIGHT_ALPHA 0.5
+#define WEIGHT_BETA 0.5
 #define WEIGHT_GAMMA 0
-
-int get_sequence(const cv::Mat* img, int n, cv::Mat** seq, double x, double y) {
-  cv::Mat img_expanded;
-  int rows = img->rows;
-  int cols = img->cols;
-
-  int bx = (n * abs(x));
-  int by = (n * abs(y));
-
-  cv::copyMakeBorder(*img, img_expanded, 0, by, 0, bx, cv::BORDER_CONSTANT,
-                     cv::Scalar(0, 0, 0, 0));
-
-  for (int i = 0; i < n; i++) {
-    double m[2][3] = {{1.0, 0.0, i * x}, {0.0, 1.0, i * y}};
-    cv::Mat M = cv::Mat(2, 3, CV_64F, m);
-    seq[i] = new cv::Mat(img_expanded.size(), img_expanded.type());
-    cv::warpAffine(img_expanded, *seq[i], M, img_expanded.size(),
-                   cv::INTER_LINEAR, cv::BORDER_TRANSPARENT);
-  }
-
-  return 0;
-}
 
 // the matrix with blured image is created on heap (new)
 // within this function because I dont know blured image
 // size until I call get_sequence()
 // Pointer to blured image matrix is returned
-cv::Mat* get_blured(const cv::Mat* img, int n, double x = 8.0, double y = 4.0) {
-  cv::Mat** seq = new cv::Mat*[n];
-  get_sequence(img, n, seq, x, y);
+cv::Mat* get_blured(const cv::Mat* img, int n, double x = 8.0, double y = 4.0, double a = 1.0) {
+  cv::Mat img_expanded;
+  int bx = n * abs(x) * a;
+  int by = n * abs(y) * a;
 
-  cv::Mat* dst = new cv::Mat(seq[0]->size(), seq[0]->type());
+  cv::copyMakeBorder(*img, img_expanded, 0, by, 0, bx, cv::BORDER_CONSTANT);
 
-  seq[0]->copyTo(*dst);
+  cv::Mat* dst = new cv::Mat(img_expanded.size(), img_expanded.type());
+
+  img_expanded.copyTo(*dst);
 
   for (int i = 0; i < n; i++) {
-    cv::addWeighted(*dst, WEIGHT_ALPHA, *seq[i], WEIGHT_BETA, WEIGHT_GAMMA,
+    double m[2][3] = {{1.0, 0.0, i * x * a},
+                      {0.0, 1.0, i * y * a}};
+
+    cv::Mat M = cv::Mat(2, 3, CV_64F, m);
+    cv::Mat shift = cv::Mat(img_expanded.size(), img_expanded.type());
+
+    cv::warpAffine(img_expanded, shift, M, img_expanded.size(),
+                   cv::INTER_LINEAR, cv::BORDER_TRANSPARENT);
+    cv::addWeighted(*dst, WEIGHT_ALPHA, shift, WEIGHT_BETA, WEIGHT_GAMMA,
                     *dst);
   }
-
-  for (int i = 0; i < n; i++) {
-    delete seq[i];
-  }
-
-  delete seq;
 
   return dst;
 }
@@ -91,7 +74,7 @@ int compose(const cv::Mat* fg, cv::Mat* bg, int x, int y) {
 }
 
 int main(int argc, char** argv) {
-  int n = 15;
+  int n = 50;
 
   if (argc < 2) {
     cout << "usage: ./MotionBlur image.png" << endl;
@@ -102,7 +85,7 @@ int main(int argc, char** argv) {
 
   // cout << img.type() << endl;
 
-  cv::Mat* dst = get_blured(&img, n, -4, 0);
+  cv::Mat* dst = get_blured(&img, n, -4, 1);
 
   // dst->copyTo(bg(cv::Rect(0,0,dst->cols, dst->rows)));
 
