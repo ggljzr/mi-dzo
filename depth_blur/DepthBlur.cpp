@@ -7,12 +7,20 @@
 #define NOT_MATCHING_TYPE -2
 #define NOT_MATCHING_SIZE -1
 
+#define KEY_ESC 27
+#define KEY_SPACE 32
+#define KEY_ALT 233
+
+#define KEY_UP 82
+#define KEY_DOWN 84
+#define KEY_LEFT 81
+#define KEY_RIGHT 83
+
+#define TARGET_STEP 8
+
 using namespace std;
 
-int sliderx, slidery;
-
-cv::Mat target;
-cv::Mat image;
+cv::Mat display;
 
 void print_matrix(const cv::Mat* mat) {
   printf("Size: %d r %d c\n", mat->rows, mat->cols);
@@ -121,7 +129,7 @@ int depth_blur(const cv::Mat *mat, const cv::Mat *depth, int x, int y,
   int cols = mat->cols * channels;
 
   cv::Vec3b target_depth = depth->at<cv::Vec3b>(y, x);
-  printf("target depth at (%d, %d) = %d\n", sliderx, slidery, target_depth[0]);
+  printf("target depth at (%d, %d) = %d\n", x, y, target_depth[0]);
 
   for (int i = 1; i < rows; i++) {
     const uchar* row_in = mat->ptr<uchar>(i);
@@ -143,13 +151,13 @@ int depth_blur(const cv::Mat *mat, const cv::Mat *depth, int x, int y,
   return 0;
 }
 
-void on_trackbar(int, void *)
+void draw_target(cv::Mat * img, int x, int y)
 {
-  printf("x = %d y = %d\n", sliderx, slidery);
-  image.copyTo(target);
-  cv::Point fp = cv::Point(sliderx, slidery);
-  circle(target, fp, 4, cv::Scalar(0,0,255), CV_FILLED, 8);
-  cv::imshow("Blur window", target);
+  img->copyTo(display);
+  cv::Point fp = cv::Point(x, y);
+  printf("x=%d y=%d\n",x,y);
+  circle(display, fp, 4, cv::Scalar(0,0,255), CV_FILLED, 8);
+  cv::imshow("Blur window", display);
 }
 
 int main(int argc, char** argv) {
@@ -158,37 +166,73 @@ int main(int argc, char** argv) {
     return 0;
   }
 
-  image = cv::imread(argv[1]);
+  cv::Mat image = cv::imread(argv[1]);
   cv::Mat depth = cv::imread(argv[2]);
 
-  cv::Mat blur = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
-
-  depth_blur(&image, &depth, 0, 0, &blur);
-
-  target = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
-  image.copyTo(target);
-
-  // cv::imshow("img", image);
-  cv::imwrite("blur.png", blur);
+  display = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
+  image.copyTo(display);
 
   cv::namedWindow("Blur window", 1);
 
-  sliderx = 0;
-  slidery = 0;
-  cv::createTrackbar("Trackbar x", "Blur window", &sliderx, image.cols, on_trackbar);
-  cv::createTrackbar("Trackbar y", "Blur window", &slidery, image.rows, on_trackbar);
+  int pointx = 0;
+  int pointy = 0;
 
-  cv::imshow("Blur window", target);
+  cv::imshow("Blur window", display);
 
   int key = 0;
+  bool exit = false;
+  bool display_depth = false;
 
-  while(1)
+  while(!exit)
   {
     key = (cv::waitKey() & 0xEFFFFF);
-    if(key == 27) break;
-    else if(key == 32){
-      depth_blur(&image, &depth, sliderx, slidery, &target);
-      cv::imshow("Blur window", target);
+
+    switch (key) {
+    case KEY_ESC:
+      exit = true;
+      break;
+    case KEY_SPACE:
+      depth_blur(&image, &depth, pointx, pointy, &display);
+      cv::imshow("Blur window", display);
+      break;
+    case KEY_DOWN:
+      if(pointy >= display.rows)
+        break;
+      pointy = (pointy + TARGET_STEP);
+      draw_target(&image, pointx, pointy);
+      break;
+    case KEY_UP:
+      if(pointy <= 0)
+        break;
+      pointy = (pointy - TARGET_STEP);
+      draw_target(&image, pointx, pointy);
+      break;
+    case KEY_LEFT:
+      if(pointx <= 0)
+        break;
+      pointx = (pointx - TARGET_STEP);
+      draw_target(&image, pointx, pointy);
+      break;
+    case KEY_RIGHT:
+      if(pointx >= display.cols)
+        break;
+      pointx = (pointx + TARGET_STEP);
+      draw_target(&image, pointx, pointy);
+      break;
+    case KEY_ALT:
+      if(!display_depth)
+      {
+        cv::imshow("Blur window", depth);
+        display_depth = true;
+      }
+      else
+      {
+        cv::imshow("Blur window", display);
+        display_depth = false;
+      }
+    default:
+      printf("key = %d\n", key);
+      break;
     }
   }
   return 0;
