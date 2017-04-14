@@ -97,14 +97,19 @@ int get_kernel(uchar a) {
   return 1;
 }
 
-int get_kernel_by_depth(uchar a, uchar depth)
-{
-  int diff = abs(a - depth);
+int get_kernel_by_depth(uchar depth, uchar target_depth, double min_depth,
+                        double max_depth) {
 
-  if (diff < 32) return 1;
-  if (diff < 64) return 3;
-  if (diff < 128) return 7;
-  if (diff < 196) return 11;
+  double maxdiff = max_depth - min_depth;
+  double depthn = ((double) depth - min_depth) / maxdiff;
+  double target_depthn = ((double) target_depth - min_depth) / maxdiff;
+
+  double diff = abs(depthn - target_depthn);
+
+  if (diff < 0.2) return 1;
+  if (diff < 0.5) return 3;
+  if (diff < 0.7) return 7;
+  if (diff < 0.9) return 11;
   return 13;
 }
 
@@ -128,6 +133,11 @@ int depth_blur(const cv::Mat *mat, const cv::Mat *depth, int x, int y,
   int channels = mat->channels();
   int cols = mat->cols * channels;
 
+  double max_depth;
+  double min_depth;
+
+  cv::minMaxLoc(*depth, &min_depth, &max_depth);
+
   cv::Vec3b target_depth = depth->at<cv::Vec3b>(y, x);
   printf("target depth at (%d, %d) = %d\n", x, y, target_depth[0]);
 
@@ -137,7 +147,7 @@ int depth_blur(const cv::Mat *mat, const cv::Mat *depth, int x, int y,
     uchar* row_out = res->ptr<uchar>(i);
     for (int j = 3; j < cols; j += channels) {
       //int k = get_kernel(row_depth[j]);
-      int k = get_kernel_by_depth(row_depth[j], target_depth[0]);
+      int k = get_kernel_by_depth(row_depth[j], target_depth[0], min_depth, max_depth);
       cv::Mat* neigbours = get_neighbours(mat, i, j / channels, k);
 
       row_out[j] = get_average(neigbours, 0);
