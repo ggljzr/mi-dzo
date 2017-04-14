@@ -20,8 +20,6 @@
 
 using namespace std;
 
-cv::Mat display;
-
 void print_matrix(const cv::Mat* mat) {
   printf("Size: %d r %d c\n", mat->rows, mat->cols);
   printf("Type: %d, channels: %d\n", mat->type(), mat->channels());
@@ -161,13 +159,13 @@ int depth_blur(const cv::Mat *mat, const cv::Mat *depth, int x, int y,
   return 0;
 }
 
-void draw_target(cv::Mat * img, int x, int y)
+void draw_target(cv::Mat * img, int x, int y, cv::Mat * display)
 {
-  img->copyTo(display);
+  img->copyTo(*display);
   cv::Point fp = cv::Point(x, y);
   printf("x=%d y=%d\n",x,y);
-  circle(display, fp, 4, cv::Scalar(0,0,255), CV_FILLED, 8);
-  cv::imshow("Blur window", display);
+  circle(*display, fp, 4, cv::Scalar(0,0,255), CV_FILLED, 8);
+  cv::imshow("Blur window", *display);
 }
 
 int main(int argc, char** argv) {
@@ -178,6 +176,8 @@ int main(int argc, char** argv) {
 
   cv::Mat image = cv::imread(argv[1]);
   cv::Mat depth = cv::imread(argv[2]);
+  cv::Mat display;
+  cv::Mat * disp_src = &image;
 
   display = cv::Mat::zeros(image.rows, image.cols, CV_8UC3);
   image.copyTo(display);
@@ -209,37 +209,41 @@ int main(int argc, char** argv) {
       if(pointy >= display.rows)
         break;
       pointy = (pointy + TARGET_STEP);
-      draw_target(&image, pointx, pointy);
+      draw_target(disp_src, pointx, pointy, &display);
       break;
     case KEY_UP:
       if(pointy <= 0)
         break;
       pointy = (pointy - TARGET_STEP);
-      draw_target(&image, pointx, pointy);
+      draw_target(disp_src, pointx, pointy, &display);
       break;
     case KEY_LEFT:
       if(pointx <= 0)
         break;
       pointx = (pointx - TARGET_STEP);
-      draw_target(&image, pointx, pointy);
+      draw_target(disp_src, pointx, pointy, &display);
       break;
     case KEY_RIGHT:
       if(pointx >= display.cols)
         break;
       pointx = (pointx + TARGET_STEP);
-      draw_target(&image, pointx, pointy);
+      draw_target(disp_src, pointx, pointy, &display);
       break;
     case KEY_ALT:
       if(!display_depth)
       {
         cv::imshow("Blur window", depth);
         display_depth = true;
+        disp_src = &depth;
       }
       else
       {
         cv::imshow("Blur window", display);
         display_depth = false;
+        disp_src = &image;
       }
+      draw_target(disp_src, pointx, pointy, &display);
+      break;
     default:
       printf("key = %d\n", key);
       break;
