@@ -203,19 +203,31 @@ double bilateral_filter_pixel(cv::Mat * mat, int pix_row, int pix_col,
   return sum / wp;
 }
 
-int bilateral_filter(cv::Mat * img, cv::Mat * res)
-{
+int bilateral_filter(const cv::Mat *img, const cv::Mat *depth, int x, int y,
+                     cv::Mat *res) {
   int rows = img->rows;
   int channels = img->channels();
   int cols = img->cols * channels;
 
+  double max_depth;
+  double min_depth;
+
+  cv::minMaxLoc(*depth, &min_depth, &max_depth);
+
+  cv::Vec3b target_depth = depth->at<cv::Vec3b>(y, x);
+  printf("target depth at (%d, %d) = %d\n", x, y, target_depth[0]);
+
   for(int i = 0; i < rows; i++)
   {
-    uchar * row_img = img->ptr<uchar>(i);
+    const uchar * row_img = img->ptr<uchar>(i);
+    const uchar * row_depth = depth->ptr<uchar>(i);
     uchar * row_res = res->ptr<uchar>(i);
     for(int j = 0; j < cols; j+= channels)
     {
-      cv::Mat * neigbours = get_neighbours(img, i, j / channels, 3);
+      int k = get_kernel_by_depth(row_depth[j], target_depth[0], min_depth,
+                                  max_depth);
+
+      cv::Mat * neigbours = get_neighbours(img, i, j / channels, k);
       uchar r = row_img[j];
       uchar g = row_img[j + 1];
       uchar b = row_img[j + 2];
@@ -286,8 +298,8 @@ int main(int argc, char** argv) {
       cv::imshow("Blur window", display);
       break;
     case KEY_ENTER:
-      printf("Bilateral filter\n");
-      bilateral_filter(&image, &display);
+      printf("Bilateral filter with focus at %d, %d\n", pointx, pointy);
+      bilateral_filter(&image, &depth, pointx, pointy, &display);
       //cv::bilateralFilter(image, display, 13, 30, 30);
       printf("Bilateral filter done!\n");
       cv::imshow("Blur window", display);
