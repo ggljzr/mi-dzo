@@ -187,15 +187,17 @@ double bilateral_filter_pixel(cv::Mat * mat, int pix_row, int pix_col,
   for (int i = 0; i < rows; i++) {
     const uchar* row = mat->ptr<uchar>(i);
     for (int j = 0; j < cols; j += channels) {
-      if(pix_col == j && pix_row == i)
+      if ((pix_col == j || pix_col + 1 == j || pix_col + 2 == j) &&
+          pix_row == i)
         continue;
 
-      double dist = euclid_dist(pix_col, pix_row, j, i);
+      double dist = euclid_dist(pix_col, pix_row, j / 3, i);
       double spat_val = gaussian(dist, SIGMA_SPACE);
       uchar current_val = row[j + channel];
       double range_val = gaussian((double) pix_val - (double) current_val, SIGMA_COLOR);
 
       wp += spat_val * range_val;
+
       sum += spat_val * range_val * row[j + channel];
     }
   }
@@ -227,6 +229,8 @@ int bilateral_filter(cv::Mat * img, cv::Mat * res)
       row_res[j] = (uchar) (valr);
       row_res[j + 1] = (uchar) (valg);
       row_res[j + 2] = (uchar) (valb);
+
+      delete neigbours;
     }
   }
 
