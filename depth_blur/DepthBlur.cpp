@@ -9,7 +9,9 @@
 
 #define KEY_ESC 27
 #define KEY_SPACE 32
+#define KEY_ENTER 10
 #define KEY_ALT 233
+#define KEY_S 115
 
 #define KEY_UP 82
 #define KEY_DOWN 84
@@ -17,6 +19,9 @@
 #define KEY_RIGHT 83
 
 #define TARGET_STEP 8
+
+#define SIGMA_COLOR 30
+#define SIGMA_SPACE 30
 
 using namespace std;
 
@@ -42,19 +47,17 @@ void print_matrix(const cv::Mat* mat) {
 }
 
 cv::Mat* get_neighbours(const cv::Mat* mat, int x, int y, int size) {
+
   cv::Rect r(y - size / 2, x - size / 2, size, size);
 
   cv::Mat* res = NULL;
-  uchar red = mat->at<uchar>(x, y);
-  uchar green = mat->at<uchar>(x + 1, y);
-  uchar blue = mat->at<uchar>(x + 2, y);
 
   if (0 <= r.x && 0 <= r.width && r.x + r.width <= mat->cols && 0 <= r.y &&
       0 <= r.height && r.y + r.height <= mat->rows) {
     res = new cv::Mat(*mat, r);
   } else {
     res = new cv::Mat(1, 1, CV_8UC3);
-    res->setTo(cv::Scalar(red, green, blue));
+    res->setTo(mat->at<cv::Vec3b>(x, y));
   }
 
   return res;
@@ -159,6 +162,80 @@ int depth_blur(const cv::Mat *mat, const cv::Mat *depth, int x, int y,
   return 0;
 }
 
+double gaussian(double z, double p)
+{
+  double n = (z * z) * (-1);
+  double d = (2 * p * p);
+  return (exp(n/d));
+}
+
+double euclid_dist(int x1, int y1, int x2, int y2)
+{
+  double dist = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
+  return sqrt(dist);
+}
+
+double bilateral_filter_pixel(cv::Mat * mat, int pix_row, int pix_col,
+                              uchar pix_val, int channel) {
+  int rows = mat->rows;
+  int channels = mat->channels();
+  int cols = mat->cols * channels;
+
+  double wp = 0;
+  double sum = 0;
+
+  for (int i = 0; i < rows; i++) {
+    const uchar* row = mat->ptr<uchar>(i);
+    for (int j = 0; j < cols; j += channels) {
+      if(pix_col == j && pix_row == i)
+        continue;
+
+      double dist = euclid_dist(pix_col, pix_row, j, i);
+      double spat_val = gaussian(dist, SIGMA_SPACE);
+      uchar current_val = row[j + channel];
+      double range_val = gaussian((double) pix_val - (double) current_val, SIGMA_COLOR);
+
+      wp += spat_val * range_val;
+      sum += spat_val * range_val * row[j + channel];
+    }
+  }
+
+  if(wp == 0)
+    return pix_val;
+
+  return sum / wp;
+}
+
+int bilateral_filter(cv::Mat * img, cv::Mat * res)
+{
+  int rows = img->rows;
+  int channels = img->channels();
+  int cols = img->cols * channels;
+
+  for(int i = 0; i < rows; i++)
+  {
+    uchar * row_img = img->ptr<uchar>(i);
+    uchar * row_res = res->ptr<uchar>(i);
+    for(int j = 0; j < cols; j+= channels)
+    {
+      cv::Mat * neigbours = get_neighbours(img, i, j / channels, 7);
+      uchar r = row_img[j];
+      uchar g = row_img[j + 1];
+      uchar b = row_img[j + 2];
+
+      double valr = bilateral_filter_pixel(neigbours, i, j / 3, r, 0);
+      double valg = bilateral_filter_pixel(neigbours, i, j / 3, g, 1);
+      double valb = bilateral_filter_pixel(neigbours, i, j / 3, b, 2);
+
+      row_res[j] = (uchar) (valr);
+      row_res[j + 1] = (uchar) (valg);
+      row_res[j + 2] = (uchar) (valb);
+    }
+  }
+
+  return 0;
+}
+
 void draw_target(cv::Mat * img, int x, int y, cv::Mat * display)
 {
   img->copyTo(*display);
@@ -187,6 +264,8 @@ int main(int argc, char** argv) {
   int pointx = 0;
   int pointy = 0;
 
+  printf("image rows = %d, cols = %d\n", image.rows, image.cols);
+
   cv::imshow("Blur window", display);
 
   int key = 0;
@@ -202,8 +281,21 @@ int main(int argc, char** argv) {
       exit = true;
       break;
     case KEY_SPACE:
+      printf("Depth blur with focus at %d, %d\n", pointx, pointy);
       depth_blur(&image, &depth, pointx, pointy, &display);
+      printf("Depth filter done!\n");
       cv::imshow("Blur window", display);
+      break;
+    case KEY_ENTER:
+      printf("Bilateral filter\n");
+      bilateral_filter(&image, &display);
+      //cv::bilateralFilter(image, display, 13, 30, 30);
+      printf("Bilateral filter done!\n");
+      cv::imshow("Blur window", display);
+      break;
+    case KEY_S:
+        printf("Saving image in res.png\n");
+        cv::imwrite("res.png", display);
       break;
     case KEY_DOWN:
       if(pointy >= display.rows)
