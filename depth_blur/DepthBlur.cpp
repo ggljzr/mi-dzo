@@ -200,9 +200,6 @@ double bilateral_filter_pixel(cv::Mat * mat, int pix_row, int pix_col,
     }
   }
 
-  if(wp == 0)
-    return pix_val;
-
   return sum / wp;
 }
 
