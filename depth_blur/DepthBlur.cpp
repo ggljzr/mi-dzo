@@ -3,6 +3,8 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/highgui/highgui.hpp>
 
+#include <time.h>
+
 #define NOT_8UC3_IMAGE -3
 #define NOT_MATCHING_TYPE -2
 #define NOT_MATCHING_SIZE -1
@@ -162,37 +164,37 @@ int depth_blur(const cv::Mat *mat, const cv::Mat *depth, int x, int y,
   return 0;
 }
 
-double gaussian(double z, double p)
+float gaussian(float z, float p)
 {
-  double n = (z * z) * (-1);
-  double d = (2 * p * p);
+  float n = (z * z) * (-1);
+  float d = (2 * p * p);
   return (exp(n/d));
 }
 
-double euclid_dist(int x1, int y1, int x2, int y2)
+float euclid_dist(int x1, int y1, int x2, int y2)
 {
-  double dist = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
+  float dist = (x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2);
   return sqrt(dist);
 }
 
-double bilateral_filter_pixel(cv::Mat * mat, int pix_row, int pix_col,
+float bilateral_filter_pixel(cv::Mat * mat, int pix_row, int pix_col,
                               uchar pix_val, int channel) {
   int rows = mat->rows;
   int channels = mat->channels();
   int cols = mat->cols * channels;
 
-  double wp = 0;
-  double sum = 0;
+  float wp = 0;
+  float sum = 0;
 
   for (int i = 0; i < rows; i++) {
     const uchar* row = mat->ptr<uchar>(i);
     for (int j = 0; j < cols; j += channels) {
       //tohle je blbost protoze ty souradnice i, j
       //nejsou v ty puvodni matici ale v tech neigbours;
-      double dist = euclid_dist(pix_col, pix_row, (j / 3) + pix_col, i + pix_row);
-      double spat_val = gaussian(dist, SIGMA_SPACE);
+      float dist = euclid_dist(pix_col, pix_row, (j / 3) + pix_col, i + pix_row);
+      float spat_val = gaussian(dist, SIGMA_SPACE);
       uchar current_val = row[j + channel];
-      double range_val = gaussian((double) pix_val - (double) current_val, SIGMA_COLOR);
+      float range_val = gaussian((float) pix_val - (float) current_val, SIGMA_COLOR);
 
       wp += spat_val * range_val;
 
@@ -232,9 +234,9 @@ int bilateral_filter(const cv::Mat *img, const cv::Mat *depth, int x, int y,
       uchar g = row_img[j + 1];
       uchar b = row_img[j + 2];
 
-      double valr = bilateral_filter_pixel(neigbours, i, j / 3, r, 0);
-      double valg = bilateral_filter_pixel(neigbours, i, j / 3, g, 1);
-      double valb = bilateral_filter_pixel(neigbours, i, j / 3, b, 2);
+      float valr = bilateral_filter_pixel(neigbours, i, j / 3, r, 0);
+      float valg = bilateral_filter_pixel(neigbours, i, j / 3, g, 1);
+      float valb = bilateral_filter_pixel(neigbours, i, j / 3, b, 2);
 
       row_res[j] = (uchar) (valr);
       row_res[j + 1] = (uchar) (valg);
@@ -283,6 +285,10 @@ int main(int argc, char** argv) {
   bool exit = false;
   bool display_depth = false;
 
+  clock_t bstart;
+  clock_t bstop;
+  double btime;
+
   while(!exit)
   {
     key = (cv::waitKey() & 0xEFFFFF);
@@ -298,10 +304,13 @@ int main(int argc, char** argv) {
       cv::imshow("Blur window", display);
       break;
     case KEY_ENTER:
+      bstart = clock();
       printf("Bilateral filter with focus at %d, %d\n", pointx, pointy);
       bilateral_filter(&image, &depth, pointx, pointy, &display);
+      bstop = clock();
+      btime = (double) (bstop - bstart) / (CLOCKS_PER_SEC);
       //cv::bilateralFilter(image, display, 13, 30, 30);
-      printf("Bilateral filter done!\n");
+      printf("Bilateral filter done! (%f s)\n", btime);
       cv::imshow("Blur window", display);
       break;
     case KEY_S:
