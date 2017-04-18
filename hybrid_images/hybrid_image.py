@@ -1,16 +1,18 @@
 import cv2
 import numpy as np
+from matplotlib import pyplot as plt
 
-ein = cv2.imread('ein.png', 0)
+ein = cv2.imread('ein250.png', 0)
+mon = cv2.imread('mon250.png', 0)
 
-print(ein.shape)
-f = np.fft.fft2(ein, (407, 407))
-fshift = np.fft.fftshift(f)
-fspec = np.log(np.abs(fshift))
+high = cv2.Sobel(ein, -1, 1, 1, scale=1, delta=128)
 
-m = np.ones(ein.shape)
-m[0:(m.shape[0] // 2)] = -1
+low = cv2.GaussianBlur(mon, (7,7), 10)
 
-mf = np.fft.fft2(m)
+print(high.shape)
+print(low.shape)
 
-cv2.imwrite('res.png', fspec * 15)
+res = cv2.addWeighted(high, 0.7, low, 0.3, 0)
+
+cv2.imshow("aa", res)
+cv2.waitKey()
