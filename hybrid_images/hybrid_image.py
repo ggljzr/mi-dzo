@@ -1,6 +1,5 @@
 import numpy as np
 from numpy.fft import fft2, ifft2, fftshift, ifftshift
-import math
 import cv2
 
 def get_gaussian(rows, cols, sigma):
@@ -28,14 +27,16 @@ if __name__ == "__main__":
 
    ein_spec = get_spec(ein)
    mon_spec = get_spec(mon)
-   mon_spec = mon_spec * gaussian
 
-   diff = 0
+   mon_spec = mon_spec * gaussian
+   ein_spec = ein_spec * (1 - gaussian)
 
    low = ifft2(mon_spec)
-   high = ifft2(ein_spec * (1 - gaussian))
+   high = ifft2(ein_spec)
 
-   res = low + high
+   res = low + (high * 1.5)
    
-   cv2.imshow('aaa', np.abs(res) / 255)
+   cv2.imshow('res', np.abs(res) / 255)
+   cv2.imshow('low', np.abs(low) / 255)
+   cv2.imshow('high', np.abs(high) / 255)
    cv2.waitKey()
