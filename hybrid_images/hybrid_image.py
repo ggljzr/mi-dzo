@@ -3,16 +3,15 @@ from numpy.fft import fft2, ifft2, fftshift, ifftshift
 import math
 import cv2
 
-#src: https://jeremykun.com/2014/09/29/hybrid-images/
-def makeGaussianFilter(numRows, numCols, sigma):
-   centerI = int(numRows/2) + 1 if numRows % 2 == 1 else int(numRows/2)
-   centerJ = int(numCols/2) + 1 if numCols % 2 == 1 else int(numCols/2)
- 
-   def gaussian(i,j):
-      coefficient = math.exp(-1.0 * ((i - centerI)**2 + (j - centerJ)**2) / (2 * sigma**2))
-      return coefficient
- 
-   return np.array([[gaussian(i,j) for j in range(numCols)] for i in range(numRows)])
+def get_gaussian(rows, cols, sigma):
+    c_y = rows // 2 + (rows % 2)
+    c_x = cols // 2 + (cols % 2)
+
+    def gaussian(x, y):
+        exponent = ((x - c_x)**2 + (y - c_y)**2)/ (-2*sigma**2)
+        return np.exp(exponent)
+
+    return np.fromfunction(lambda x,y : gaussian(x,y), (rows, cols))
 
 def get_spec(img):
    spec = fft2(img)
@@ -25,7 +24,7 @@ if __name__ == "__main__":
 
    n,m = mon.shape
 
-   gaussian = makeGaussianFilter(n, m, 20)
+   gaussian = get_gaussian(n, m, 20)
 
    ein_spec = get_spec(ein)
    mon_spec = get_spec(mon)
