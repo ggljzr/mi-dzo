@@ -10,7 +10,7 @@ def get_gaussian(rows, cols, sigma):
         exponent = ((x - c_x)**2 + (y - c_y)**2)/ (-2*sigma**2)
         return np.exp(exponent)
 
-    return np.fromfunction(lambda x,y : gaussian(x,y), (rows, cols))
+    return np.fromfunction(lambda x, y : gaussian(x,y), (rows, cols))
 
 def get_spec(img):
    spec = fft2(img)
