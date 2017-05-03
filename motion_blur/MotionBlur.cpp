@@ -1,5 +1,6 @@
 #include <math.h>
 #include <iostream>
+#include <unistd.h>
 #include <opencv2/core/core.hpp>
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -8,38 +9,54 @@ using namespace std;
 
 #define NOT_SAME_TYPE -1
 
-#define WEIGHT_ALPHA 0.5
-#define WEIGHT_BETA 0.5
+#define WEIGHT_ALPHA 0.7
+#define WEIGHT_BETA 0.3
 #define WEIGHT_GAMMA 0
 
 // the matrix with blured image is created on heap (new)
 // within this function because I dont know blured image
 // size until I call get_sequence()
 // Pointer to blured image matrix is returned
-cv::Mat* get_blured(const cv::Mat* img, int n, double x = 8.0, double y = 4.0, double a = 1.0) {
+cv::Mat* get_blured(const cv::Mat* img, int n, double x = 1.0, double y = 0.0, double a = 1.0) {
   cv::Mat img_expanded;
-  int bx = n * abs(x) * a;
-  int by = n * abs(y) * a;
 
-  cv::copyMakeBorder(*img, img_expanded, 0, by, 0, bx, cv::BORDER_CONSTANT);
+  int dtx = img->cols / (n * 2);
+  int dty = img->rows / (n * 2);
+  
+  int bxb = (x > 0) ? n * abs(x) * dtx * a : 0;
+  int byb = (y > 0) ? n * abs(y) * dty * a : 0;
+
+  int bxt = (x < 0) ? n * abs(x) * dtx * a : 0;
+  int byt = (y < 0) ? n * abs(y) * dty * a : 0;
+
+  cv::copyMakeBorder(*img, img_expanded, byt, byb, bxt, bxb, cv::BORDER_CONSTANT);
 
   cv::Mat* dst = new cv::Mat(img_expanded.size(), img_expanded.type());
+
+  cv::Mat temp(img_expanded.size(), img_expanded.type());
 
   img_expanded.copyTo(*dst);
 
   for (int i = 0; i < n; i++) {
-    double m[2][3] = {{1.0, 0.0, i * x * a},
-                      {0.0, 1.0, i * y * a}};
+    double posx = (i + 1) * x * dtx * a;
+    double posy = (i + 1) * y * dty * a;
+
+    double m[2][3] = {{1.0, 0.0, posx},
+                      {0.0, 1.0, posy}};
 
     cv::Mat M = cv::Mat(2, 3, CV_64F, m);
     cv::Mat shift = cv::Mat(img_expanded.size(), img_expanded.type());
 
+    double i_norm = (double) i / (double) n;
+    printf("step %d: i norm = %f\n",i, i_norm); 
+
     cv::warpAffine(img_expanded, shift, M, img_expanded.size(),
                    cv::INTER_LINEAR, cv::BORDER_TRANSPARENT);
-    cv::addWeighted(*dst, WEIGHT_ALPHA, shift, WEIGHT_BETA, WEIGHT_GAMMA,
+    cv::addWeighted(*dst, i_norm, shift, 1 - i_norm, WEIGHT_GAMMA,
                     *dst);
+    cv::imshow("step", *dst);
+    cv::waitKey();
   }
-
   return dst;
 }
 
@@ -74,23 +91,35 @@ int compose(const cv::Mat* fg, cv::Mat* bg, int x, int y) {
 }
 
 int main(int argc, char** argv) {
-  int n = 50;
+  int n = 5;
 
   if (argc < 2) {
     cout << "usage: ./MotionBlur image.png" << endl;
+    return 0;
   }
 
-  cv::Mat img = cv::imread(argv[1], cv::IMREAD_UNCHANGED);
+  if(argc > 2)
+  {
+    n = atoi(argv[2]);
+  }
+
+  //cv::Mat img = cv::imread(argv[1], cv::IMREAD_UNCHANGED);
+  cv::Mat img = cv::imread(argv[1]);
+
   cv::Mat bg = cv::imread("bg.png");
 
   // cout << img.type() << endl;
 
-  cv::Mat* dst = get_blured(&img, n, -4, 1);
+  cv::Mat* dst = get_blured(&img, n, 1, 0.5);
 
   // dst->copyTo(bg(cv::Rect(0,0,dst->cols, dst->rows)));
 
-  // cv::imwrite("res.png", bg);
+  cout << img.size() << endl;
+
+  cv::imshow("res", *dst);
   cv::imwrite("res.png", *dst);
+
+  cv::waitKey();
 
   delete dst;
 
