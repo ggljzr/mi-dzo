@@ -22,8 +22,8 @@
 
 #define TARGET_STEP 8
 
-#define SIGMA_COLOR 30
-#define SIGMA_SPACE 30
+#define SIGMA_COLOR 60
+#define SIGMA_SPACE 100
 
 using namespace std;
 
@@ -110,10 +110,10 @@ int get_kernel_by_depth(uchar depth, uchar target_depth, double min_depth,
   double diff = abs(depthn - target_depthn);
 
   if (diff < 0.2) return 1;
-  if (diff < 0.5) return 3;
-  if (diff < 0.7) return 7;
-  if (diff < 0.9) return 11;
-  return 13;
+  if (diff < 0.5) return 5;
+  if (diff < 0.7) return 11;
+  if (diff < 0.9) return 13;
+  return 17;
 }
 
 void depth_visualise(const cv::Mat* depth) {
@@ -177,8 +177,9 @@ float euclid_dist(int x1, int y1, int x2, int y2)
   return sqrt(dist);
 }
 
-float bilateral_filter_pixel(cv::Mat * mat, int pix_row, int pix_col,
-                              uchar pix_val, int channel) {
+float bilateral_filter_pixel(const cv::Mat *mat, const cv::Mat *depth,
+                             int pix_row, int pix_col, int pix_val,
+                             uchar pix_depth, int channel) {
   int rows = mat->rows;
   int channels = mat->channels();
   int cols = mat->cols * channels;
@@ -188,13 +189,19 @@ float bilateral_filter_pixel(cv::Mat * mat, int pix_row, int pix_col,
 
   for (int i = 0; i < rows; i++) {
     const uchar* row = mat->ptr<uchar>(i);
+    const uchar* depth_row = depth->ptr<uchar>(i);
     for (int j = 0; j < cols; j += channels) {
-      //tohle je blbost protoze ty souradnice i, j
-      //nejsou v ty puvodni matici ale v tech neigbours;
-      float dist = euclid_dist(pix_col, pix_row, (j / 3) + pix_col, i + pix_row);
+      float dist = (float) pix_depth - depth_row[j];
+
       float spat_val = gaussian(dist, SIGMA_SPACE);
-      uchar current_val = row[j + channel];
-      float range_val = gaussian((float) pix_val - (float) current_val, SIGMA_COLOR);
+
+      uchar r = row[j];
+      uchar g = row[j + 1];
+      uchar b = row[j + 2];
+
+      float current_val = r + g + b;
+
+      float range_val = gaussian(current_val - pix_val, SIGMA_COLOR);
 
       wp += spat_val * range_val;
 
@@ -228,21 +235,27 @@ int bilateral_filter(const cv::Mat *img, const cv::Mat *depth, int x, int y,
     {
       int k = get_kernel_by_depth(row_depth[j], target_depth[0], min_depth,
                                   max_depth);
-
       cv::Mat * neigbours = get_neighbours(img, i, j / channels, k);
+      cv::Mat * neigbours_d = get_neighbours(depth, i, j / channels, k);
       uchar r = row_img[j];
       uchar g = row_img[j + 1];
       uchar b = row_img[j + 2];
+      int v = r + g + b;
+      uchar d = row_depth[j];
 
-      float valr = bilateral_filter_pixel(neigbours, i, j / 3, r, 0);
-      float valg = bilateral_filter_pixel(neigbours, i, j / 3, g, 1);
-      float valb = bilateral_filter_pixel(neigbours, i, j / 3, b, 2);
+      float valr =
+          bilateral_filter_pixel(neigbours, neigbours_d, i, j / 3, v, d, 0);
+      float valg = 
+          bilateral_filter_pixel(neigbours, neigbours_d, i, j / 3, v, d, 1);
+      float valb =
+          bilateral_filter_pixel(neigbours, neigbours_d, i, j / 3, v, d, 2);
 
       row_res[j] = (uchar) (valr);
       row_res[j + 1] = (uchar) (valg);
       row_res[j + 2] = (uchar) (valb);
 
       delete neigbours;
+      delete neigbours_d;
     }
   }
 
@@ -253,7 +266,6 @@ void draw_target(cv::Mat * img, int x, int y, cv::Mat * display)
 {
   img->copyTo(*display);
   cv::Point fp = cv::Point(x, y);
-  printf("x=%d y=%d\n",x,y);
   circle(*display, fp, 4, cv::Scalar(0,0,255), CV_FILLED, 8);
   cv::imshow("Blur window", *display);
 }
@@ -357,7 +369,6 @@ int main(int argc, char** argv) {
       draw_target(disp_src, pointx, pointy, &display);
       break;
     default:
-      printf("key = %d\n", key);
       break;
     }
   }
