@@ -113,7 +113,7 @@ int get_kernel_by_depth(uchar depth, uchar target_depth, double min_depth,
   if (diff < 0.5) return 5;
   if (diff < 0.7) return 11;
   if (diff < 0.9) return 13;
-  return 17;
+  //return 13;
 }
 
 void depth_visualise(const cv::Mat* depth) {
@@ -201,7 +201,7 @@ float bilateral_filter_pixel(const cv::Mat *mat, const cv::Mat *depth,
 
       float current_val = r + g + b;
 
-      float range_val = gaussian(current_val - pix_val, SIGMA_COLOR);
+      float range_val = gaussian((current_val - pix_val) / 3, SIGMA_COLOR);
 
       wp += spat_val * range_val;
 
