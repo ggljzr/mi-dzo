@@ -23,7 +23,7 @@ if __name__ == '__main__':
 
     n,m = mon.shape
 
-    gaussian = get_gaussian(n, m, 20)
+    gaussian = get_gaussian(n, m, 10)
 
     ein_spec = get_spec(ein)
     mon_spec = get_spec(mon)
@@ -35,7 +35,7 @@ if __name__ == '__main__':
     low = ifft2(mon_spec)
     high = ifft2(ein_spec)
 
-    res = low + (high * 1.2)
+    res = low + (high)
 
     cv2.imshow('gauss', gaussian)
     cv2.imshow('res', np.abs(res) / 255)
