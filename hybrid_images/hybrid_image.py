@@ -2,6 +2,8 @@ import numpy as np
 from numpy.fft import fft2, ifft2, fftshift, ifftshift
 import cv2
 
+import sys
+
 def get_gaussian(rows, cols, sigma):
     c_y = rows // 2 + (rows % 2)
     c_x = cols // 2 + (cols % 2)
@@ -18,22 +20,35 @@ def get_spec(img):
     return spec
 
 if __name__ == '__main__':
-    mon = cv2.imread('mon350.png', 0)
-    ein = cv2.imread('ein350.png', 0)
 
-    n,m = mon.shape
+    sigma = 10
 
-    gaussian = get_gaussian(n, m, 10)
+    if len(sys.argv) < 3:
+        print('Usage: ./hybrid_image.py low_image high_image (sigma)')
+        sys.exit(0)
 
-    ein_spec = get_spec(ein)
-    mon_spec = get_spec(mon)
+    if len(sys.argv) >= 4:
+        sigma = float(sys.argv[3])
 
-    mon_spec = mon_spec * gaussian
-    #ein_spec = ein_spec - mon_spec
-    ein_spec = ein_spec * (1 - gaussian)
+    low_in = cv2.imread(sys.argv[1], 0)
+    high_in = cv2.imread(sys.argv[2], 0)
 
-    low = ifft2(mon_spec)
-    high = ifft2(ein_spec)
+    if low_in.shape != high_in.shape:
+        print('Both images have to be the same size')
+        sys.exit(0)
+
+    n, m = low_in.shape
+
+    gaussian = get_gaussian(n, m, sigma)
+
+    low_spec = get_spec(low_in)
+    high_spec = get_spec(high_in)
+
+    low_spec = low_spec * gaussian
+    high_spec = high_spec * (1 - gaussian)
+
+    low = ifft2(low_spec)
+    high = ifft2(high_spec)
 
     res = low + (high)
 
@@ -42,3 +57,5 @@ if __name__ == '__main__':
     cv2.imshow('low', np.abs(low) / 255)
     cv2.imshow('high', np.abs(high) / 255)
     cv2.waitKey()
+
+    cv2.imwrite('res.png', np.abs(res))
