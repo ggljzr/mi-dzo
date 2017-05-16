@@ -13,6 +13,19 @@ using namespace std;
 #define WEIGHT_BETA 0.3
 #define WEIGHT_GAMMA 0
 
+#define KEY_ESC 27
+
+cv::Mat img;
+
+const int iteration_slider_max = 20;
+int iteration_slider;
+
+const int x_slider_max = 10;
+int x_slider;
+
+const int y_slider_max = 10;
+int y_slider;
+
 // the matrix with blured image is created on heap (new)
 // within this function because I dont know blured image
 // size until I call get_sequence()
@@ -29,7 +42,7 @@ cv::Mat* get_blured(const cv::Mat* img, int n, double x = 1.0, double y = 0.0, d
   int bxt = (x < 0) ? n * abs(x) * dtx * a : 0;
   int byt = (y < 0) ? n * abs(y) * dty * a : 0;
 
-  cv::copyMakeBorder(*img, img_expanded, byt, byb, bxt, bxb, cv::BORDER_CONSTANT);
+  cv::copyMakeBorder(*img, img_expanded, byt, byb, bxt, bxb, cv::BORDER_REPLICATE);
 
   cv::Mat* dst = new cv::Mat(img_expanded.size(), img_expanded.type());
 
@@ -48,80 +61,76 @@ cv::Mat* get_blured(const cv::Mat* img, int n, double x = 1.0, double y = 0.0, d
     cv::Mat shift = cv::Mat(img_expanded.size(), img_expanded.type());
 
     double i_norm = (double) i / (double) n;
-    printf("step %d: i norm = %f\n",i, i_norm); 
 
     cv::warpAffine(img_expanded, shift, M, img_expanded.size(),
-                   cv::INTER_LINEAR, cv::BORDER_TRANSPARENT);
+                   cv::INTER_LINEAR, cv::BORDER_REPLICATE);
     cv::addWeighted(*dst, i_norm, shift, 1 - i_norm, WEIGHT_GAMMA,
                     *dst);
-    cv::imshow("step", *dst);
-    cv::waitKey();
+    //cv::imshow("step", *dst);
+    //cv::waitKey();
   }
   return dst;
 }
 
-// WIP
-int compose(const cv::Mat* fg, cv::Mat* bg, int x, int y) {
-  // if(fg->channels() != 3)
-  // cv::cvtColor(*fg, *fg, CV_GRAY2RGB);
-
-  if (bg->channels() != 4) cv::cvtColor(*bg, *bg, CV_RGB2RGBA);
-
-  int rows = fg->rows;
-  int channels = fg->channels();
-  int cols = fg->cols * channels;
-
-  for (int i = 0; i < rows; i++) {
-    uchar* row_bg = bg->ptr<uchar>(i + y);
-    const uchar* row_fg = fg->ptr<uchar>(i);
-    for (int j = 0; j < cols; j += channels) {
-      int r = row_fg[j];
-      int g = row_fg[j + 1];
-      int b = row_fg[j + 2];
-
-      if (r > 10 && g > 10 && b > 10) {
-        row_bg[j + x] = r;
-        row_bg[j + x + 1] = g;
-        row_bg[j + x + 2] = b;
-        row_bg[j + x + 3] = row_fg[j + 3];
-      } else
-        row_bg[j + x + 3] = 255;
-    }
-  }
+void on_trackbar( int, void* )
+{
+  double dx = (double) x_slider / (double) x_slider_max;
+  double dy = (double) y_slider / (double) y_slider_max;
+  int n = iteration_slider + 1;
+  printf("n: %d;x, y: %f %f\n",n, dx, dy);
+  cv::Mat* dst = get_blured(&img, n, dx, dy);
+  cv::imshow( "motion blur", *dst );
+  delete dst;
 }
 
 int main(int argc, char** argv) {
-  int n = 5;
-
   if (argc < 2) {
     cout << "usage: ./MotionBlur image.png" << endl;
     return 0;
   }
 
-  if(argc > 2)
+  cv::namedWindow("motion blur", 1);
+
+  cv::createTrackbar( "Iterations", "motion blur", 
+    &iteration_slider, 
+    iteration_slider_max, 
+    on_trackbar );
+
+  cv::createTrackbar( "x", "motion blur", 
+    &x_slider, 
+    x_slider_max, 
+    on_trackbar );
+
+  cv::createTrackbar( "y", "motion blur", 
+    &y_slider, 
+    y_slider_max, 
+    on_trackbar );
+
+  img = cv::imread(argv[1], cv::IMREAD_UNCHANGED);
+
+  cv::imshow("motion blur", img);
+
+  bool exit = false;
+
+  while(!exit)
   {
-    n = atoi(argv[2]);
+    int key = (cv::waitKey() & 0xEFFFFF);
+    switch(key)
+    {
+      case KEY_ESC:
+        exit = true;
+        break;
+    }
   }
 
-  //cv::Mat img = cv::imread(argv[1], cv::IMREAD_UNCHANGED);
-  cv::Mat img = cv::imread(argv[1]);
+  int n = iteration_slider + 1;
+  double dx = (double) x_slider / (double) x_slider_max;
+  double dy = (double) y_slider / (double) y_slider_max;
 
-  cv::Mat bg = cv::imread("bg.png");
+  cv::Mat* result = get_blured(&img, n, dx, dy);
+  cv::imwrite("res.png", *result);
 
-  // cout << img.type() << endl;
-
-  cv::Mat* dst = get_blured(&img, n, 1, 0.5);
-
-  // dst->copyTo(bg(cv::Rect(0,0,dst->cols, dst->rows)));
-
-  cout << img.size() << endl;
-
-  cv::imshow("res", *dst);
-  cv::imwrite("res.png", *dst);
-
-  cv::waitKey();
-
-  delete dst;
+  delete result;
 
   return 0;
 }
