@@ -23,7 +23,7 @@
 #define TARGET_STEP 8
 
 #define SIGMA_COLOR 60
-#define SIGMA_SPACE 100
+#define SIGMA_SPACE 50
 
 using namespace std;
 
