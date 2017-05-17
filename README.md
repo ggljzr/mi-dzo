@@ -25,5 +25,7 @@ Each folder contains ``CmakeLists.txt`` file.
 
 ``
 $ cmake .
+``
+``
 $ make
 ``
