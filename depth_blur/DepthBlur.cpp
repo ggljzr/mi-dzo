@@ -22,8 +22,8 @@
 
 #define TARGET_STEP 8
 
-#define SIGMA_COLOR 60
-#define SIGMA_SPACE 50
+#define SIGMA_DEPTH 100
+#define SIGMA_SPACE 60
 
 using namespace std;
 
@@ -191,21 +191,17 @@ float bilateral_filter_pixel(const cv::Mat *mat, const cv::Mat *depth,
     const uchar* row = mat->ptr<uchar>(i);
     const uchar* depth_row = depth->ptr<uchar>(i);
     for (int j = 0; j < cols; j += channels) {
-      float dist = (float) pix_depth - depth_row[j];
+      float depth_diff = (float) pix_depth - depth_row[j];
+      float dist = euclid_dist(pix_col, pix_row, (j / 3) + pix_col, i + pix_row);
 
       float spat_val = gaussian(dist, SIGMA_SPACE);
+      float depth_val = gaussian(depth_diff, SIGMA_DEPTH);
 
-      uchar r = row[j];
-      uchar g = row[j + 1];
-      uchar b = row[j + 2];
+      //float range_val = gaussian((current_val - pix_val) / 3, SIGMA_COLOR);
 
-      float current_val = r + g + b;
+      wp += spat_val * depth_val;
 
-      float range_val = gaussian((current_val - pix_val) / 3, SIGMA_COLOR);
-
-      wp += spat_val * range_val;
-
-      sum += spat_val * range_val * row[j + channel];
+      sum += spat_val * depth_val *row[j + channel];
     }
   }
 
