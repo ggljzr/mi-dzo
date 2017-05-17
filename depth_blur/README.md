@@ -6,3 +6,7 @@
 * Alt -- switch between image and depth map display
 * S -- save image in ``res.png``
 * Esc -- exit
+
+# Dataset
+
+[Middlebury dataset](http://vision.middlebury.edu/stereo/) is nice collection of images with depth maps.
