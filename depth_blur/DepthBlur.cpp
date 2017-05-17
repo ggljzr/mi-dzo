@@ -178,8 +178,7 @@ float euclid_dist(int x1, int y1, int x2, int y2)
 }
 
 float bilateral_filter_pixel(const cv::Mat *mat, const cv::Mat *depth,
-                             int pix_row, int pix_col, int pix_val,
-                             uchar pix_depth, int channel) {
+                             int pix_row, int pix_col, uchar pix_depth, int channel) {
   int rows = mat->rows;
   int channels = mat->channels();
   int cols = mat->cols * channels;
@@ -201,7 +200,7 @@ float bilateral_filter_pixel(const cv::Mat *mat, const cv::Mat *depth,
 
       wp += spat_val * depth_val;
 
-      sum += spat_val * depth_val *row[j + channel];
+      sum += spat_val * depth_val * row[j + channel];
     }
   }
 
@@ -233,18 +232,14 @@ int bilateral_filter(const cv::Mat *img, const cv::Mat *depth, int x, int y,
                                   max_depth);
       cv::Mat * neigbours = get_neighbours(img, i, j / channels, k);
       cv::Mat * neigbours_d = get_neighbours(depth, i, j / channels, k);
-      uchar r = row_img[j];
-      uchar g = row_img[j + 1];
-      uchar b = row_img[j + 2];
-      int v = r + g + b;
       uchar d = row_depth[j];
 
       float valr =
-          bilateral_filter_pixel(neigbours, neigbours_d, i, j / 3, v, d, 0);
+          bilateral_filter_pixel(neigbours, neigbours_d, i, j / 3, d, 0);
       float valg = 
-          bilateral_filter_pixel(neigbours, neigbours_d, i, j / 3, v, d, 1);
+          bilateral_filter_pixel(neigbours, neigbours_d, i, j / 3, d, 1);
       float valb =
-          bilateral_filter_pixel(neigbours, neigbours_d, i, j / 3, v, d, 2);
+          bilateral_filter_pixel(neigbours, neigbours_d, i, j / 3, d, 2);
 
       row_res[j] = (uchar) (valr);
       row_res[j + 1] = (uchar) (valg);
