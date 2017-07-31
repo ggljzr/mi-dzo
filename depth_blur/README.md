@@ -10,3 +10,7 @@
 # Dataset
 
 [Middlebury dataset](http://vision.middlebury.edu/stereo/) is nice collection of images with depth maps.
+
+# Alternative implementation
+
+Alternative implementation in Scala is [here](https://github.com/ggljzr/mi-psl). It has more comfortable GUI, however it will probably be slower than this version.
